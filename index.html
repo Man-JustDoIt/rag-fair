@@ -2,108 +2,79 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Авторизация</title>
+    <title>Rag-fair</title>
     <style>
-        :root {
-            --tg-theme-bg-color: #ffffff;
-            --tg-theme-text-color: #000000;
-            --tg-theme-secondary-bg-color: #ffffff;
-            --tg-theme-button-color: #0088cc;
-            --tg-button-text-color: #ffffff;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat;wght@200;500&display=swap');
 
-        body {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            background: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
         }
 
-        #auth {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: calc(100% - 40px);
-            max-width: 600px;
+        body {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 200;
+            color: var(--tg-theme-text-color);
+            background: var(--tg-theme-bg-color);
+        }
+
+        #main {
+            width: 100%;
             padding: 20px;
-            background-color: var(--tg-theme-secondary-bg-color);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 50px;
+            margin-bottom: 10px;
+        }
+
+        img {
+            width: 70px;
+            margin: 30px auto;
+        }
+
+        p {
+            width: 350px;
             margin: 0 auto;
         }
 
-        input {
-            width: calc(100% - 20px);
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-
         button {
-            padding: 10px 15px;
-            background-color: var(--tg-theme-button-color);
-            color: var(--tg-button-text-color);
-            border: none;
+            border: 0;
             border-radius: 5px;
+            margin-top: 50 px;
+            height: 60px;
+            width: 200px;
+            font-size: 20px;
+            font-weight: 500;
             cursor: pointer;
-            font-size: 16px;
+            transition: all 500ms ease;
+            color: var(--tg-theme-button-color);
+            background: var(--tg-theme-button-text-color);
         }
 
         button:hover {
-            opacity: 0.9;
-        }
-
-        button:disabled {
-            background-color: gray;
-            cursor: not-allowed;
+            background: var(--tg-theme-secondary-bg-color);
         }
     </style>
 </head>
 <body>
-    <div id="auth">
-        <h1>Авторизация</h1>
-        <input type="text" placeholder="Введите имя" id="firstName">
-        <input type="text" placeholder="Введите фамилию" id="lastName">
-        <input type="tel" placeholder="Введите номер телефона" id="phone" pattern="\d{10}" maxlength="10">
-        <button id="login" disabled>Войти</button>
+    <div id="main">
+        <h1>Fair</h1>
+        <img src="https://cdn-icons-png.flaticon.com/512/3595/3595455.png">
+        <p>Канал Профсоюза Сбера приветствует Вас DFC QQQ!</p>
+        <button id="buy">Купить</button>
     </div>
-
+    <form id="form">
+        <input type="text" placeholder="Имя" id="user_name">
+        <input type="text" placeholder="Email" id="user_email">
+        <input type="text" placeholder="Телефон" id="user_phone">
+        <button id="order">Оформить</button>
+    </form>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>
-        const firstName = document.getElementById('firstName');
-        const lastName = document.getElementById('lastName');
-        const phone = document.getElementById('phone');
-        const loginButton = document.getElementById('login');
-
-        function checkFields() {
-            const isFirstNameValid = firstName.value.trim() !== '';
-            const isLastNameValid = lastName.value.trim() !== '';
-            const isPhoneValid = /^\d{10}$/.test(phone.value.trim());
-
-            loginButton.disabled = !(isFirstNameValid && isLastNameValid && isPhoneValid);
-        }
-
-        firstName.addEventListener('input', checkFields);
-        lastName.addEventListener('input', checkFields);
-        phone.addEventListener('input', checkFields);
-
-        loginButton.addEventListener('click', function() {
-            Telegram.WebApp.sendData(JSON.stringify({
-                firstName: firstName.value.trim(),
-                lastName: lastName.value.trim(),
-                phone: phone.value.trim()
-            }));
-            window.location.href = "shop.html";
-        });
-    </script>
 </body>
 </html>
