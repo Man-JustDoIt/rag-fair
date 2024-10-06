@@ -5,7 +5,7 @@ app = Flask(__name__, template_folder='.')
 
 @app.route("/")
 def web():
-    return render_template('index.html')
+    return render_template('https://man-justdoit.github.io/rag-fair/index.html')
 
 
 if __name__ == "__main__":
