@@ -1,15 +1,12 @@
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.types.web_app_info import WebAppInfo
+from flask import Flask, render_template
 
-bot = Bot('8007893303:AAEBlTEpJ96g2MAEJr_zy83IXP8H9mYs3do')
-dp = Dispatcher(bot)
-url = 'https://man-justdoit.github.io/rag-fair/index.html'
+app = Flask(__name__, template_folder='.')
 
 
-@dp.message_handler(commands=['start'])
-async def start(message: types.Message):
-    markup = types.ReplyKeyboardMarkup()
-    markup.add(types.KeyboardButton('Открыть веб сраницу', web_app=WebAppInfo(url=url)))
-    await message.answer('Добро пожаловать на канал профсоюза Сбербанка', reply_markup=markup)
+@app.route("/")
+def web():
+    return render_template('index.html')
 
-executor.start_polling(dp)
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port='80')
