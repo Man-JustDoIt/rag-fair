@@ -46,16 +46,69 @@
             background: var(--tg-theme-button-color);
         }
 
+        form {
+            display: none;
+            text-align: center;
+        }
+
+        input {
+            outline: none;
+            border-radius: 5px;
+            border: 2px solid #535353;
+            padding: 15px 10px;
+            margin: 10px 0 0;
+            background: var(--tg-theme-section-separator-color);
+            color: var(--tg-theme-text-color);
+            transition: all .2s;
+        }
+
+        input:focus {
+            border-color: var(--tg-theme-secondary-bg-color)
+        }
+
     </style>
 </head>
 <body>
     <div class="Main">
         <h1>Тестовое приложение</h1>
-        <img src="bot.png" alt="123">
+        <img src="{{ url_for('static', filename='bot.png') }}" alt="">
         <p></p>
-        <button class="btn">Кнопка</button>
+        <button class="btn f-btn">Тест отправки данных</button>
     </div>
+    <form class="test-form">
+        <input type="text" placeholder="Введите заголовок" class="title-inp">
+        <input type="text" placeholder="Введите описание" class="desc-inp">
+        <input type="text" placeholder="Введите текст" class="text-inp">
+        <button class="btn s-btn">Отправить</button>
+    </form>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+
+        let fBtn = document.getElementsByClassName("f-btn")[0]
+        let sBtn = document.getElementsByClassName("s-btn")[0]
+
+        fBtn.addEventListener("click", () => {
+            document.getElementsByClassName("Main")[0].style.display = "none";
+            document.getElementsByClassName("test-form")[0].style.display = "block";
+        });
+
+        sBtn.addEventListener("click", () => {
+            let title = document.getElementsByClassName("title-inp")[0];
+            let description = document.getElementsByClassName("desc-inp")[0];
+            let text = document.getElementsByClassName("text-inp")[0];
+
+
+            let data = {
+                title: title.value,
+                desc: description.value,
+                text: text.value
+            }
+
+            tg.sendData(JSON.stringify(data));
+        });
+    </script>
 </body>
 </html>
