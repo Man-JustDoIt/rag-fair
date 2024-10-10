@@ -87,7 +87,10 @@
     <script>
         let tg = window.Telegram.WebApp;
 
+        <!-- Кнопка "Тест отправки данных" -->
         let fBtn = document.getElementsByClassName("f-btn")[0]
+
+        <!-- Кнопка "Отправить" -->
         let sBtn = document.getElementsByClassName("s-btn")[0]
 
         fBtn.addEventListener("click", () => {
@@ -99,6 +102,8 @@
             let title = document.getElementsByClassName("title-inp")[0];
             let description = document.getElementsByClassName("desc-inp")[0];
             let text = document.getElementsByClassName("text-inp")[0];
+            document.getElementsByClassName("Main")[0].style.display = "block";
+            document.getElementsByClassName("test-form")[0].style.display = "none";
 
 
             let data = {
