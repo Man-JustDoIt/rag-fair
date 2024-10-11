@@ -1,3 +1,4 @@
+# todo  0. Скрыть токен бота    -   done
 # todo  1. Клавиша старт внизу бота
 # todo  2. Приветствие с ФИО
 # todo  3. Переход на страницу с выбором
@@ -7,6 +8,8 @@ import asyncio
 import logging
 import json
 import os
+from dotenv import load_dotenv
+
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
@@ -14,18 +17,21 @@ from aiogram.enums.content_type import ContentType
 from aiogram.filters import CommandStart
 from aiogram.enums.parse_mode import ParseMode
 
-logging.basicConfig(level=logging.INFO)
 
-bot = Bot('8007893303:AAEBlTEpJ96g2MAEJr_zy83IXP8H9mYs3do')
+logging.basicConfig(level=logging.INFO)
+load_dotenv()
+bot = Bot(os.getenv('bot_token'))
+
 url = "https://man-justdoit.github.io/rag-fair/index.html"
 dp = Dispatcher()
+
 
 # вызов функции /start
 @dp.message(CommandStart())
 async def start(message: types.Message):
     webAppInfo = types.WebAppInfo(url=url)
     builder = ReplyKeyboardBuilder()
-    builder.add(types.KeyboardButton(text='Запустить приложение', web_app=webAppInfo))
+    builder.add(types.KeyboardButton(text='Запустить приложение', web_app=webAppInfo, resize_keyboard=True))
 
     await message.answer(text='Привет!', reply_markup=builder.as_markup())
 
