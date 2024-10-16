@@ -1,7 +1,12 @@
 # todo  0. Скрыть токен бота    -   done
 # todo  1. Клавиша старт и помощь внизу бота и на главном меню    -   done
-# todo  2. Приветствие с ФИО
-# todo  3. Переход на страницу с выбором
+# todo  2. Приветствие с ФИО    -   done
+# todo  3. Вывести информацию при нажатии кнопки "О проекте"
+# todo  4. Добавить БД - SQLight
+# todo  5. Добавить в лог БД факт входа пользователя
+# todo  6. Проверить пользователя на админство
+# todo  7. Только админам показывать кнопку "Добавить информацию"
+
 
 
 import asyncio
@@ -30,11 +35,11 @@ dp = Dispatcher()
 # обработка команды /start от бота
 @dp.message(CommandStart())
 async def start(message: types.Message):
-    name = message.from_user.username
-    name += " " + message.from_user.first_name + " " + message.from_user.last_name
-    name += " " + message.from_user.full_name
-    id = message.from_user.id
-    await message.answer(text=f'Привет {name} {id}!', reply_markup=create_btn())
+    tg_login = message.from_user.username
+    first_name = message.from_user.first_name
+    last_name = message.from_user.last_name
+    user_id = message.from_user.id
+    await message.answer(text=f'Привет {first_name} !', reply_markup=create_btn())
 
 @dp.message(F.content_type == ContentType.WEB_APP_DATA)
 async def parse_data(message: types.Message):
