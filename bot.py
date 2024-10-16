@@ -1,5 +1,5 @@
 # todo  0. Скрыть токен бота    -   done
-# todo  1. Клавиша старт внизу бота
+# todo  1. Клавиша старт и помощь внизу бота и на главном меню    -   done
 # todo  2. Приветствие с ФИО
 # todo  3. Переход на страницу с выбором
 
@@ -17,6 +17,7 @@ from aiogram.enums.content_type import ContentType
 from aiogram.filters import CommandStart
 from aiogram.enums.parse_mode import ParseMode
 
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, KeyboardButtonPollType
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
@@ -26,15 +27,14 @@ url = "https://man-justdoit.github.io/rag-fair/index.html"
 dp = Dispatcher()
 
 
-# вызов функции /start
+# обработка команды /start от бота
 @dp.message(CommandStart())
 async def start(message: types.Message):
-    webAppInfo = types.WebAppInfo(url=url)
-    builder = ReplyKeyboardBuilder()
-    builder.add(types.KeyboardButton(text='Запустить приложение', web_app=webAppInfo, resize_keyboard=True))
-
-    await message.answer(text='Привет!', reply_markup=builder.as_markup())
-
+    name = message.from_user.username
+    name += " " + message.from_user.first_name + " " + message.from_user.last_name
+    name += " " + message.from_user.full_name
+    id = message.from_user.id
+    await message.answer(text=f'Привет {name} {id}!', reply_markup=create_btn())
 
 @dp.message(F.content_type == ContentType.WEB_APP_DATA)
 async def parse_data(message: types.Message):
@@ -43,6 +43,31 @@ async def parse_data(message: types.Message):
     await message.answer(f'<b>{data["title"]}</b>\n\n<code>{data["desc"]}</code>\n\n{data["text"]}',
                          parse_mode=ParseMode.HTML)
 
+
+def create_btn():
+    # Инициализируем ссылку на сайт
+    webAppInfo = types.WebAppInfo(url=url)
+    # Инициализируем билдер
+    builder = ReplyKeyboardBuilder()
+
+    # Создаем кнопки
+    start_btn = KeyboardButton(
+        text='Запустить приложение',
+        web_app=webAppInfo
+    )
+    help_btn = KeyboardButton(
+        text='О проекте ПроБот'
+    )
+
+    # Добавляем кнопки в билдер
+    builder.row(start_btn, help_btn, width=1)
+
+    # Создаем объект клавиатуры
+    keyboard: ReplyKeyboardMarkup = builder.as_markup(
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+    return keyboard
 
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
