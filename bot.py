@@ -8,7 +8,6 @@
 # todo  7. Только админам показывать кнопку "Добавить информацию"
 
 
-
 import asyncio
 import logging
 import json
@@ -49,29 +48,30 @@ async def parse_data(message: types.Message):
                          parse_mode=ParseMode.HTML)
 
 
+# @dp.message_handler(commands=['help'])
+# async def process_start_command(message: types.Message) -> None:
+# # async def help_btn(message: types.Message):
+#     # markup = types.ReplyKeyboardMarkup()
+#     # markup.add(types.KeyboardButton('Открыть веб сраницу', web_app=WebAppInfo(url=url)))
+#     await message.answer('О канале')#, reply_markup=markup)
+
+
+
 def create_btn():
     # Инициализируем ссылку на сайт
     webAppInfo = types.WebAppInfo(url=url)
-    # Инициализируем билдер
-    builder = ReplyKeyboardBuilder()
-
-    # Создаем кнопки
-    start_btn = KeyboardButton(
-        text='Запустить приложение',
-        web_app=webAppInfo
-    )
-    help_btn = KeyboardButton(
-        text='О проекте ПроБот'
-    )
-
-    # Добавляем кнопки в билдер
-    builder.row(start_btn, help_btn, width=1)
-
-    # Создаем объект клавиатуры
-    keyboard: ReplyKeyboardMarkup = builder.as_markup(
+    kb = [
+            [
+                types.KeyboardButton(text="Открыть приложение", web_app=webAppInfo),
+                types.KeyboardButton(text="О проекте")
+            ],
+         ]
+    keyboard = types.ReplyKeyboardMarkup(
+        keyboard=kb,
         resize_keyboard=True,
-        one_time_keyboard=True
+        input_field_placeholder="Выберете действие"
     )
+
     return keyboard
 
 async def main():
