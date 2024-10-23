@@ -16,12 +16,10 @@ from dotenv import load_dotenv
 
 
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from aiogram.enums.content_type import ContentType
 from aiogram.filters import CommandStart
 from aiogram.enums.parse_mode import ParseMode
 
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, KeyboardButtonPollType
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
@@ -48,14 +46,10 @@ async def parse_data(message: types.Message):
                          parse_mode=ParseMode.HTML)
 
 
-# @dp.message_handler(commands=['help'])
-# async def process_start_command(message: types.Message) -> None:
-# # async def help_btn(message: types.Message):
-#     # markup = types.ReplyKeyboardMarkup()
-#     # markup.add(types.KeyboardButton('Открыть веб сраницу', web_app=WebAppInfo(url=url)))
-#     await message.answer('О канале')#, reply_markup=markup)
-
-
+# Исправленная строка
+@dp.message(lambda message: message.text in ['/help', "О проекте"])
+async def process_start_command(message: types.Message) -> None:
+    await message.answer("test message")
 
 def create_btn():
     # Инициализируем ссылку на сайт
