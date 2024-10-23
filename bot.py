@@ -1,7 +1,7 @@
 # todo  0. Скрыть токен бота    -   done
 # todo  1. Клавиша старт и помощь внизу бота и на главном меню    -   done
 # todo  2. Приветствие с ФИО    -   done
-# todo  3. Вывести информацию при нажатии кнопки "О проекте"
+# todo  3. Вывести информацию при нажатии кнопки "О проекте"    -   done
 # todo  4. Добавить БД - SQLight
 # todo  5. Добавить в лог БД факт входа пользователя
 # todo  6. Проверить пользователя на админство
@@ -49,7 +49,10 @@ async def parse_data(message: types.Message):
 # Исправленная строка
 @dp.message(lambda message: message.text in ['/help', "О проекте"])
 async def process_start_command(message: types.Message) -> None:
-    await message.answer("test message")
+    msg = ('Приложение \n'
+           '1. Информирует о программе лояльности профсоюзной организации Сбера \n' 
+           '2. Дает возможность размещать личные объявления для коллег')
+    await message.answer(msg)
 
 def create_btn():
     # Инициализируем ссылку на сайт
