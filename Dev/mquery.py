@@ -17,8 +17,6 @@ class BC:
     UNDERLINE = '\033[4m'
 
 
-yaml_file = '../SQL/requests.yml'
-
 def mquery(sql_query: str, params=None):
     """
        В качестве входного sql_query могут быть переданы 3 типа параметров:
@@ -34,11 +32,12 @@ def mquery(sql_query: str, params=None):
        """
     load_dotenv()
     db_path = os.getenv('db_path')
+    yml_path = os.getenv('yml_path')
 
     sql_keywords = ["select", "insert", "update", "delete", "from", "where", "join", "group by", "having", "order by",
                     "create", "alter", "drop"]
 
-    with open(yaml_file, 'r') as file:
+    with open(yml_path, 'r') as file:
         requests = yaml.safe_load(file)
     #     Проверяем, является ли sql_query ключом Yaml
     try:
@@ -93,9 +92,12 @@ def mquery(sql_query: str, params=None):
 
 
 if __name__ == "__main__":
-    res = mquery('create_tables')
-    print(res)
-    print('!!!!!!!')
+    if not mquery('create_tables'):
+        print(f'{BC.FAIL}Error: не удалось проверить целостность таблиц БД!{BC.ENDC}')
+
+    # res = mquery('create_tables')
+    # print(res)
+    # print('!!!!!!!')
     # res = mquery('../SQL/create tables.sql')
     # print(res)
     # params = [140291166, 'Dmitry_Ufimtsev', 'Дмитрий', 'Уфимцев']
@@ -105,6 +107,6 @@ if __name__ == "__main__":
     # params = [140291166, 'Dmitry_Ufimtsev', 'Дмитрий', 'Уфимцев']
     # res = mquery('add_users', params)
     # print(res)
-    params = [140291166]
-    res = mquery('check_users', params)
-    print(res)
+    # params = [140291166]
+    # res = mquery('check_users', params)
+    # print(res)

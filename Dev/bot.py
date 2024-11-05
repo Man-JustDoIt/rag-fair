@@ -7,7 +7,8 @@
 # todo      5.1 Проверить наличие пользователя в БД. Если нет, то записать  -   done
 # todo      5.1.1 Обеспечить хранение нескольких SQL скриптов в одном файле  -   done
 # todo      5.2 Записать факт входа в систему
-# todo      5.3 Вернуть дату и время последнего входа и текущий уровень доступа
+# todo      5.3 Добавить витрину с полномочиями: admin, content_redactor, banned_user
+# todo      5.4 Вернуть дату и время последнего входа и текущий уровень доступа
 
 # todo  7. Только админам показывать кнопку "Добавить информацию"
 # todo  8. Научиться строить сайты в зависимости от полученных данных иб БД
@@ -41,14 +42,12 @@ class BC:
     UNDERLINE = '\033[4m'
 
 
-
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
 bot = Bot(os.getenv('bot_token'))
 
 url = "https://man-justdoit.github.io/rag-fair/index.html"
 dp = Dispatcher()
-
 
 
 def check_users(message: types.Message):
@@ -64,6 +63,11 @@ def check_users(message: types.Message):
         params = [tg_id, tg_login, first_name, last_name]
         if not mquery('add_users', params):
             print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить пользователя {tg_login} в БД!')
+
+    if isinstance(res, pd.DataFrame):
+        params = [tg_id, 'нажатие клавиши start']
+        if not mquery('add2log', params):
+            print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить данные в лог {BC.WARNING}{params}{BC.ENDC} БД!')
 
     return first_name
 
