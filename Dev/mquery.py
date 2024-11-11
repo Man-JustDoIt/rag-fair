@@ -95,6 +95,17 @@ if __name__ == "__main__":
     if not mquery('create_tables'):
         print(f'{BC.FAIL}Error: не удалось проверить целостность таблиц БД!{BC.ENDC}')
 
+    # params = [140291166, 'команда /start']
+    # res = mquery('add2log', params)
+
+    # event = 'команда /start'
+    # res = mquery('check_event', [event])
+    # print(res)
+
+    res = mquery('check_event')
+    print(res)
+
+
     # res = mquery('create_tables')
     # print(res)
     # print('!!!!!!!')

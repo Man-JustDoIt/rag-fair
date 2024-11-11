@@ -6,7 +6,7 @@
 # todo  5. Добавить в лог БД факт входа пользователя
 # todo      5.1 Проверить наличие пользователя в БД. Если нет, то записать  -   done
 # todo      5.1.1 Обеспечить хранение нескольких SQL скриптов в одном файле  -   done
-# todo      5.2 Записать факт входа в систему
+# todo      5.2 Записать в лог исполнения команды /start  -   done
 # todo      5.3 Добавить витрину с полномочиями: admin, content_redactor, banned_user
 # todo      5.4 Вернуть дату и время последнего входа и текущий уровень доступа
 
@@ -57,17 +57,27 @@ def check_users(message: types.Message):
     last_name = message.from_user.last_name
 
     params = [tg_id]
-    res = mquery('check_users', params)
+    res = mquery('check_user', params)
 
     if isinstance(res, pd.DataFrame) and res.empty:
         params = [tg_id, tg_login, first_name, last_name]
-        if not mquery('add_users', params):
+        if not mquery('add_new_user', params):
             print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить пользователя {tg_login} в БД!')
+            return False
 
+    event = 'команда /start'
     if isinstance(res, pd.DataFrame):
-        params = [tg_id, 'нажатие клавиши start']
+        params = [tg_id, event]
+
+        check_ev = mquery('check_event', [event])
+        if isinstance(check_ev, pd.DataFrame) and check_ev.empty:
+            print(f'{BC.FAIL}Error:{BC.ENDC} В словаре событий отсутствует событие {BC.WARNING}{event}{BC.ENDC}!')
+            return False
+        print(check_ev)
+
         if not mquery('add2log', params):
             print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить данные в лог {BC.WARNING}{params}{BC.ENDC} БД!')
+            return False
 
     return first_name
 
