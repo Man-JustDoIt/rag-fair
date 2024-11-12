@@ -1,0 +1,127 @@
+# Возвращаем роль и дату/время последнего входа пользователя
+return_user_role:
+    "
+    select 
+            eh.report_dt
+        ,	eh.tg_id
+        ,	ed.event
+        ,	ud.role
+    from events_h as eh
+        join events_dict as ed on 1=1
+            and eh.event_id = ed.event_id
+            and ed.event = %var% --   'команда /start'
+            and eh.report_dt = (select max(report_dt) from events_h)
+        left join user_role_h as ur on 1=1
+            and ur.tg_id = eh.tg_id
+            and ur.is_actual = 1
+        left join user_role_dict as ud on 1=1
+            and ud.role_id = ur.role_id
+    where 1=1
+            and eh.tg_id = %var% --  140291166
+    "
+
+# Проверка наличия пользователя
+check_user:
+    "
+	select ua.*, ud.role
+    from user_accounts_h as ua
+	left join user_role_h as ur
+		on ur.tg_id = ua.tg_id
+		and ur.is_actual = 1
+    left join user_role_dict as ud
+        on ud.role_id = ur.role_id  		
+    where 1=1
+		and ua.tg_id = %var%    -- 140291166
+		and ua.is_actual = 1
+    "
+
+# Проверка наличия события в словаре событий
+check_event:
+    "
+    select event_id
+    from events_dict
+    where event = '%var%'
+    "
+
+# Добавить нового пользователя
+add_new_user:
+    "            
+    insert into
+    user_accounts_h
+        (report_dt, is_actual, tg_id, tg_login, first_name, last_name)
+    values
+        (datetime('now', 'localtime'), 1, %var%, '%var%', '%var%', '%var%')
+    "
+
+# Добавить запись в log
+add2log:
+    "    
+    insert into 
+    events_h
+        (report_dt, tg_id, event_id)
+    select 
+        datetime('now', 'localtime'),
+        %var%,
+        event_id
+    from events_dict
+    where event = '%var%'
+    "
+
+# Проверяем наличие нужных таблиц, если нет, то создаем
+create_tables:
+    "
+    --  drop table if exists user_accounts_h;
+    
+    create table if not exists user_accounts_h
+    (
+            report_dt date not null
+        ,   is_actual integer not null
+        ,   tg_id integer not null
+        ,   tg_login text not null
+        ,   first_name text null
+        ,   last_name text null
+        ,   phone text null
+        ,   corp_email text null
+        ,   home_email text null
+    )
+
+    ;
+    --  drop table if exists events_dict;
+    
+    create table if not exists events_dict
+    (
+    	    event_id integer primary key
+    	,	event text not null
+    )
+    
+    ;
+    --  drop table if exists events_h;
+    
+    create table if not exists events_h
+    (
+            report_dt date not null
+    	,   tg_id integer not null
+    	,	event_id text not null
+    )
+    ;
+
+    --  drop table if exists user_role_dict;
+    
+    create table if not exists user_role_dict
+    (
+    	    role_id integer primary key
+    	,	role text not null
+    )
+    
+    ;    
+    --  drop table if exists user_role_h;
+    
+    create table if not exists user_role_h
+    (
+    	    report_dt date not null
+    	,	is_actual integer not null
+    	,   tg_id integer not null
+    	,	role_id integer not null
+    	,	author_tg_id integer not null
+    )
+    "
