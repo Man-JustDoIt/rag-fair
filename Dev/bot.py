@@ -73,7 +73,6 @@ def check_users(message: types.Message):
         if isinstance(check_ev, pd.DataFrame) and check_ev.empty:
             print(f'{BC.FAIL}Error:{BC.ENDC} В словаре событий отсутствует событие {BC.WARNING}{event}{BC.ENDC}!')
             return False
-        print(check_ev)
 
         if not mquery('add2log', params):
             print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить данные в лог {BC.WARNING}{params}{BC.ENDC} БД!')

@@ -34,8 +34,8 @@ def mquery(sql_query: str, params=None):
     db_path = os.getenv('db_path')
     yml_path = os.getenv('yml_path')
 
-    sql_keywords = ["select", "insert", "update", "delete", "from", "where", "join", "group by", "having", "order by",
-                    "create", "alter", "drop"]
+    sql_keywords = ["from", "select", "where", "join", "group by", "having", "order by",
+                    "drop", "insert", "update", "delete", "create", "alter"]
 
     with open(yml_path, 'r') as file:
         requests = yaml.safe_load(file)
@@ -53,7 +53,7 @@ def mquery(sql_query: str, params=None):
                 return False
 
     #   Проверим что полученный текст запроса это SQL запрос
-    if not any(keyword in sql_query for keyword in sql_keywords):
+    if not any(keyword in sql_query.lower() for keyword in sql_keywords):
         print(f'{BC.FAIL}Error: текст {BC.WARNING}{sql_query}{BC.FAIL} не является SQL запросом.{BC.ENDC}')
         return False
 
@@ -62,7 +62,7 @@ def mquery(sql_query: str, params=None):
         params = []
     else:
         for param in params:
-            if any(keyword in str(param) for keyword in sql_keywords):
+            if any(keyword in str(param).lower() for keyword in sql_keywords):
                 print(f'{BC.FAIL}Error: текст переменной  {BC.WARNING}{param}{BC.FAIL} содержит SQL инъекцию!{BC.ENDC}')
                 return False
 
@@ -78,13 +78,14 @@ def mquery(sql_query: str, params=None):
     connection = sqlite3.connect(db_path)
     cursor = connection.cursor()
     out = False
+    # print(BC.WARNING, sql_query, BC.ENDC)
     try:
-        if 'select' in sql_query.lower():
-            out = pd.read_sql_query(sql_query, connection)
-        else:
+        if any(keyword in sql_query.lower() for keyword in sql_keywords[7:]):
             cursor.executescript(sql_query)
             connection.commit()
             out = True
+        else:
+            out = pd.read_sql_query(sql_query, connection)
         connection.close()
     except Exception as e:
         print(f'Не удалось выполнить запрос - {e}')
@@ -92,8 +93,8 @@ def mquery(sql_query: str, params=None):
 
 
 if __name__ == "__main__":
-    if not mquery('create_tables'):
-        print(f'{BC.FAIL}Error: не удалось проверить целостность таблиц БД!{BC.ENDC}')
+    # if not mquery('create_tables'):
+    #     print(f'{BC.FAIL}Error: не удалось проверить целостность таблиц БД!{BC.ENDC}')
 
     # params = [140291166, 'команда /start']
     # res = mquery('add2log', params)
@@ -101,10 +102,23 @@ if __name__ == "__main__":
     # event = 'команда /start'
     # res = mquery('check_event', [event])
     # print(res)
+    # res = mquery('check_event', params)
 
-    res = mquery('check_event')
+    params = [140291166, 'команда /start']
+
+    query = """
+    insert into 
+    events_h
+        (report_dt, tg_id, event_id)
+    select 
+        datetime('now', 'localtime'),
+        %var%,
+        event_id
+    from events_dict
+    where event = '%var%'
+    """
+    res = mquery(query, params)
     print(res)
-
 
     # res = mquery('create_tables')
     # print(res)
