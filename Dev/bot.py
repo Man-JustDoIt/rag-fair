@@ -9,6 +9,7 @@
 # todo      5.2 Записать в лог исполнения команды /start  -   done
 # todo      5.3 Добавить витрину с полномочиями: admin, content_redactor, banned_user  -   done
 # todo      5.4 Вернуть дату и время последнего входа и текущий уровень доступа
+# todo  6. Покрыть тестами вход пользователя: новый, существующий, без прав, с правами, с ограничениями
 
 # todo  7. Только админам показывать кнопку "Добавить информацию"
 # todo  8. Научиться строить сайты в зависимости от полученных данных иб БД
@@ -18,6 +19,7 @@ import asyncio
 import logging
 import json
 import os
+import sys
 from dotenv import load_dotenv
 import pandas as pd
 
@@ -49,42 +51,61 @@ bot = Bot(os.getenv('bot_token'))
 url = "https://man-justdoit.github.io/rag-fair/index.html"
 dp = Dispatcher()
 
+def add2log(tg_id, event, comments):
 
-def check_users(message: types.Message):
+    check_ev = mquery('check_event', [event])
+    if isinstance(check_ev, pd.DataFrame) and check_ev.empty:
+        print(f'{BC.FAIL}Error:{BC.ENDC} В словаре событий отсутствует событие {BC.WARNING}{event}{BC.ENDC}!')
+        return False
+    if not mquery('add2log', [tg_id, comments, event]):
+        print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить данные в лог {BC.WARNING}{event}{BC.ENDC} БД!')
+        return False
+    return True
+
+
+def check_users(message: types.Message, event):
     tg_login = message.from_user.username
     tg_id = message.from_user.id
     first_name = message.from_user.first_name
     last_name = message.from_user.last_name
+    role = 'user'
+    last_time = '2000-01-01'
 
-    params = [tg_id]
-    res = mquery('check_user', params)
-
+    res = mquery('check_user_and_role', [tg_id])
     if isinstance(res, pd.DataFrame) and res.empty:
         params = [tg_id, tg_login, first_name, last_name]
-        if not mquery('add_new_user', params):
-            print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить пользователя {tg_login} в БД!')
+        cnt = mquery('add_new_user', params)
+        if not cnt:
+            print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить пользователя {first_name or tg_login} в БД!')
             return False
+        else:
+            print(f'{BC.OKBLUE}В БД добавлено {cnt} записей.{BC.ENDC}')
+        new_user = 1
+    elif isinstance(res, pd.DataFrame):
+        new_user = 0
+        role = res['role'].iloc(0)[0] if res['role'].iloc(0)[0] is not None else role
+        res = mquery('last_event_time', [tg_id, event])
+        if isinstance(res, pd.DataFrame) and not res.empty:
+            last_time = res['report_dt'].iloc(0)[0] if res['report_dt'].iloc(0)[0] is not None else last_time
+    else:
+        return False
 
-    event = 'команда /start'
-    if isinstance(res, pd.DataFrame):
-        params = [tg_id, event]
+    if new_user == 1:
+        msg = f'Добро пожаловать {first_name}!'
+        comments = f'{tg_login}: {role} - регистрация нового пользователя.'
+    else:
+        msg = f'Привет {first_name}!'
+        comments = f'{tg_login}: {role} - вход зарегистрированного пользователя'
+        comments += f", предыдущий вход {last_time} " if last_time != '2000-01-01' else '.'
 
-        check_ev = mquery('check_event', [event])
-        if isinstance(check_ev, pd.DataFrame) and check_ev.empty:
-            print(f'{BC.FAIL}Error:{BC.ENDC} В словаре событий отсутствует событие {BC.WARNING}{event}{BC.ENDC}!')
-            return False
-
-        if not mquery('add2log', params):
-            print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить данные в лог {BC.WARNING}{params}{BC.ENDC} БД!')
-            return False
-
-    return first_name
+    return msg if add2log(tg_id, event, comments) else False
 
 # обработка команды /start от бота
 @dp.message(CommandStart())
 async def start(message: types.Message):
-    first_name = check_users(message)
-    await message.answer(text=f'Привет {first_name} !', reply_markup=create_btn())
+    msg = check_users(message, 'команда /start')
+    text = 'Что-то пошло не так!' if not msg else msg
+    await message.answer(text=text, reply_markup=create_btn())
 
 
 # обработка команды /help от бота

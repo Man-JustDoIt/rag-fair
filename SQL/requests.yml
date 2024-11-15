@@ -1,27 +1,17 @@
 # Возвращаем роль и дату/время последнего входа пользователя
-return_user_role:
+last_event_time:
     "
     select 
-            eh.report_dt
-        ,	eh.tg_id
-        ,	ed.event
-        ,	ud.role
+        max(report_dt) as report_dt 
     from events_h as eh
-        join events_dict as ed on 1=1
-            and eh.event_id = ed.event_id
-            and ed.event = %var% --   'команда /start'
-            and eh.report_dt = (select max(report_dt) from events_h)
-        left join user_role_h as ur on 1=1
-            and ur.tg_id = eh.tg_id
-            and ur.is_actual = 1
-        left join user_role_dict as ud on 1=1
-            and ud.role_id = ur.role_id
-    where 1=1
-            and eh.tg_id = %var% --  140291166
+    join events_dict as ed on 1=1
+        and eh.event_id = ed.event_id
+        and eh.tg_id = %var%
+        and ed.event = '%var%'
     "
 
 # Проверка наличия пользователя
-check_user:
+check_user_and_role:
     "
 	select ua.*, ud.role
     from user_accounts_h as ua
@@ -31,7 +21,7 @@ check_user:
     left join user_role_dict as ud
         on ud.role_id = ur.role_id  		
     where 1=1
-		and ua.tg_id = %var%    -- 140291166
+		and ua.tg_id = %var%    
 		and ua.is_actual = 1
     "
 
@@ -58,11 +48,12 @@ add2log:
     "    
     insert into 
     events_h
-        (report_dt, tg_id, event_id)
+        (report_dt, tg_id, event_id, comments)
     select 
         datetime('now', 'localtime'),
         %var%,
-        event_id
+        event_id,
+        '%var%'
     from events_dict
     where event = '%var%'
     "
@@ -91,7 +82,7 @@ create_tables:
     create table if not exists events_dict
     (
     	    event_id integer primary key
-    	,	event text not null
+    	,	event text unique not null
     )
     
     ;
@@ -102,6 +93,7 @@ create_tables:
             report_dt date not null
     	,   tg_id integer not null
     	,	event_id text not null
+    	,	comments text null
     )
     ;
 
@@ -110,7 +102,7 @@ create_tables:
     create table if not exists user_role_dict
     (
     	    role_id integer primary key
-    	,	role text not null
+    	,	role text unique not null
     )
     
     ;    

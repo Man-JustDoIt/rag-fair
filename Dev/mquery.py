@@ -83,12 +83,12 @@ def mquery(sql_query: str, params=None):
         if any(keyword in sql_query.lower() for keyword in sql_keywords[7:]):
             cursor.executescript(sql_query)
             connection.commit()
-            out = True
+            out = cursor.rowcount
         else:
             out = pd.read_sql_query(sql_query, connection)
         connection.close()
     except Exception as e:
-        print(f'Не удалось выполнить запрос - {e}')
+        print(f'Не удалось выполнить запрос {BC.OKBLUE}{sql_query}{BC.ENDC} - {BC.WARNING}{e}{BC.ENDC}')
     return out
 
 
@@ -105,20 +105,38 @@ if __name__ == "__main__":
     # res = mquery('check_event', params)
 
     params = [140291166, 'команда /start']
-
     query = """
-    insert into 
-    events_h
-        (report_dt, tg_id, event_id)
     select 
-        datetime('now', 'localtime'),
-        %var%,
-        event_id
-    from events_dict
-    where event = '%var%'
+            eh.report_dt
+        ,	eh.tg_id
+        ,	ua.tg_login
+        ,	ua.first_name
+        ,	ua.last_name
+        ,	ud.role
+        ,	ed.event
+        
+    from events_h as eh
+        join events_dict as ed on 1=1
+            and eh.event_id = ed.event_id
+            and eh.tg_id = %var%
+            and ed.event = '%var%'
+            and eh.report_dt = (select max(report_dt) from events_h)
+        join user_accounts_h as ua on 1=1
+            and eh.tg_id = ua.tg_id
+        left join user_role_h as ur on 1=1
+            and ur.tg_id = eh.tg_id
+            and ur.is_actual = 1
+        left join user_role_dict as ud on 1=1
+            and ud.role_id = ur.role_id
+    
     """
+    # res = mquery('return_user_role', params)
+
+    query = "select * from user_accounts_h"
     res = mquery(query, params)
-    print(res)
+    print(res['phone'].iloc(0)[0])
+
+    # print(res['role'].item())
 
     # res = mquery('create_tables')
     # print(res)
