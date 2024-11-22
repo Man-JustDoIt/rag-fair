@@ -1,9 +1,13 @@
 import os
+import re
+import sys
 from dotenv import load_dotenv
 import sqlite3
 import pandas as pd
 import yaml
 
+sql_keywords = ["from", "select", "where", "join", "group by", "having", "order by",
+                "drop", "insert", "update", "delete", "create", "alter"]
 
 class BC:
     HEADER = '\033[95m'
@@ -17,25 +21,53 @@ class BC:
     UNDERLINE = '\033[4m'
 
 
-def mquery(sql_query: str, params=None):
+def replace_semicolon(text, direction):
     """
-       В качестве входного sql_query могут быть переданы 3 типа параметров:
-            a) Метка для файла ../SQL/requests.yml
-            b) Путь к текстовому файлу
-            c) Непосредственно текст SQL запроса
+    Если direction = 1
+        1.  Создать список из всех части текста text, обрамленные " или '
+        2.  Проверить, есть ли внутри какого-либо элемента символ ;
+        3.  Если есть, то заменить его на %!%
+        4.  Меняем это элемент в тексте, проверяем до конца списка
+        5.  После всех замен возвращаем текст с заменой ; на %!%
+    Если direction = 0
+        1.  На вход должен подаваться список, состющих из команд SQL
+        2.  В каждом элементе списка ищем %!% и меняем на ;
+        3.  Возвращеме востановленный список.
+    """
+    list_to_replace = []
+    if direction:
+        matches = re.findall(r"'(.+?)'", text)      # обрамление одинарными кавычками
+        matches += re.findall(r'"(.+?)"', text)     # обрамление двойными кавычками
+        for match in matches:
+            if ';' in match:
+                before = match
+                after = match.replace(';', '%!%')
+                list_to_replace.append([before, after])
+        if list_to_replace:
+            for block in list_to_replace:
+                text = text.replace(block[0], block[1])
+        return text
+    else:
+        for i, block in enumerate(text):
+            if '%!%' in block:
+                text[i] = text[i].replace('%!%', ';')
+        return text
 
-       1. Проверяем, является ли sql_query путем к файлу. Если да, то открываем и текст сохраняем в переменную sql_query.
-       2. Проверяем является ли текст переменной sql_query SQL запросом.
-       3. Если с текстом запроса передаются параметры, то проверяем количество параметров = кол-ву переменных
-       4. Проверим отсутствие SQL инъекций в тексте параметров
-       5. Если п.2 = п.3 = п.4 = True - выполняем текст запроса sql_query
+
+def get_sql_text(sql_query: str, params=None):
+    """
+           В качестве входного sql_query могут быть переданы 3 типа параметров:
+                a) Метка для файла ../SQL/requests.yml
+                b) Путь к текстовому файлу
+                c) Непосредственно текст SQL запроса
+
+           1. Проверяем, является ли sql_query путем к файлу. Если да, то открываем и текст сохраняем в переменную sql_query.
+           2. Проверяем является ли текст переменной sql_query SQL запросом.
+           3. Если с текстом запроса передаются параметры, то проверяем количество параметров = кол-ву переменных
+           4. Проверим отсутствие SQL инъекций в тексте параметров
+           5. Если п.2 = п.3 = п.4 = True, то ищем в тексте ';', если есть, то разделяем запрос на подзапросы
        """
-    load_dotenv()
-    db_path = os.getenv('db_path')
     yml_path = os.getenv('yml_path')
-
-    sql_keywords = ["from", "select", "where", "join", "group by", "having", "order by",
-                    "drop", "insert", "update", "delete", "create", "alter"]
 
     with open(yml_path, 'r') as file:
         requests = yaml.safe_load(file)
@@ -75,24 +107,64 @@ def mquery(sql_query: str, params=None):
               f', ожидается {BC.WARNING}{var_count}{BC.ENDC}: \n{params}\n {sql_query}')
         return False
 
+    # Временно заменяем те ';' которые не являются разделителми блоков SQL
+    sql_flat = replace_semicolon(sql_query, 1)
+
+    # Разбиваем SQL на исполняемые блоки
+    sql_list = sql_flat.split(';')
+    sql_list = sql_list[:-1] if sql_list[-1].strip() == '' else sql_list
+
+    # Возвращаем на место ';' которые заменены для верного разбиения на исполняемые блоки SQL
+    sql_list = replace_semicolon(sql_list, 0)
+    return sql_list
+
+
+def mquery(sql_query: str, params=None):
+    """
+    1. Принимаем параметры и передаем их на обработку - возвращаем список sql команд
+    2. Соединяемся с БД
+    2. Последовательно выполняем полученные sql команды
+    """
+    load_dotenv()
+    db_path = os.getenv('db_path')
+
+    sql_list = get_sql_text(sql_query, params)
+    if not sql_list:
+        return False
+
     connection = sqlite3.connect(db_path)
     cursor = connection.cursor()
     out = False
     # print(BC.WARNING, sql_query, BC.ENDC)
-    try:
-        if any(keyword in sql_query.lower() for keyword in sql_keywords[7:]):
-            cursor.executescript(sql_query)
-            connection.commit()
-            out = cursor.rowcount
-        else:
-            out = pd.read_sql_query(sql_query, connection)
-        connection.close()
-    except Exception as e:
-        print(f'Не удалось выполнить запрос {BC.OKBLUE}{sql_query}{BC.ENDC} - {BC.WARNING}{e}{BC.ENDC}')
+    for sql in sql_list:
+        try:
+            if any(keyword in sql.lower() for keyword in sql_keywords[7:]):
+                cursor.execute(sql)
+                connection.commit()
+                out = cursor.rowcount
+            else:
+                out = pd.read_sql_query(sql, connection)
+        except Exception as e:
+            print(f'Не удалось выполнить запрос {BC.OKBLUE}{sql_query}{BC.ENDC} - {BC.WARNING}{e}{BC.ENDC}')
+            return False
+
+    connection.close()
     return out
 
 
 if __name__ == "__main__":
+    tg_id, new_role, author_tg_id = 123456, 'banned_user', 140291166
+    params = [tg_id, author_tg_id, new_role, tg_id]
+    res = mquery('set_user_and_rights', params)
+    print(res)
+
+    params = ['команда /start']
+    res = mquery('check_event', params)
+    print(res)
+
+
+
+
     # if not mquery('create_tables'):
     #     print(f'{BC.FAIL}Error: не удалось проверить целостность таблиц БД!{BC.ENDC}')
 
@@ -104,52 +176,52 @@ if __name__ == "__main__":
     # print(res)
     # res = mquery('check_event', params)
 
-    params = [140291166, 'команда /start']
-    query = """
-    select 
-            eh.report_dt
-        ,	eh.tg_id
-        ,	ua.tg_login
-        ,	ua.first_name
-        ,	ua.last_name
-        ,	ud.role
-        ,	ed.event
-        
-    from events_h as eh
-        join events_dict as ed on 1=1
-            and eh.event_id = ed.event_id
-            and eh.tg_id = %var%
-            and ed.event = '%var%'
-            and eh.report_dt = (select max(report_dt) from events_h)
-        join user_accounts_h as ua on 1=1
-            and eh.tg_id = ua.tg_id
-        left join user_role_h as ur on 1=1
-            and ur.tg_id = eh.tg_id
-            and ur.is_actual = 1
-        left join user_role_dict as ud on 1=1
-            and ud.role_id = ur.role_id
-    
-    """
-    # res = mquery('return_user_role', params)
-
-    query = "select * from user_accounts_h"
-    res = mquery(query, params)
-    print(res['phone'].iloc(0)[0])
-
-    # print(res['role'].item())
-
-    # res = mquery('create_tables')
-    # print(res)
-    # print('!!!!!!!')
-    # res = mquery('../SQL/create tables.sql')
-    # print(res)
-    # params = [140291166, 'Dmitry_Ufimtsev', 'Дмитрий', 'Уфимцев']
-    # res = mquery('../SQL/add users.sql', params)
-    # print(res)
-    # params = [140291166]
-    # params = [140291166, 'Dmitry_Ufimtsev', 'Дмитрий', 'Уфимцев']
-    # res = mquery('add_users', params)
-    # print(res)
-    # params = [140291166]
-    # res = mquery('check_users', params)
-    # print(res)
+    # params = [140291166, 'команда /start']
+    # query = """
+    # select
+    #         eh.report_dt
+    #     ,	eh.tg_id
+    #     ,	ua.tg_login
+    #     ,	ua.first_name
+    #     ,	ua.last_name
+    #     ,	ud.role
+    #     ,	ed.event
+    #
+    # from events_h as eh
+    #     join events_dict as ed on 1=1
+    #         and eh.event_id = ed.event_id
+    #         and eh.tg_id = %var%
+    #         and ed.event = '%var%'
+    #         and eh.report_dt = (select max(report_dt) from events_h)
+    #     join user_accounts_h as ua on 1=1
+    #         and eh.tg_id = ua.tg_id
+    #     left join user_role_h as ur on 1=1
+    #         and ur.tg_id = eh.tg_id
+    #         and ur.is_actual = 1
+    #     left join user_role_dict as ud on 1=1
+    #         and ud.role_id = ur.role_id
+    #
+    # """
+    # # res = mquery('return_user_role', params)
+    #
+    # query = "select * from user_accounts_h"
+    # res = mquery(query, params)
+    # print(res['phone'].iloc(0)[0])
+    #
+    # # print(res['role'].item())
+    #
+    # # res = mquery('create_tables')
+    # # print(res)
+    # # print('!!!!!!!')
+    # # res = mquery('../SQL/create tables.sql')
+    # # print(res)
+    # # params = [140291166, 'Dmitry_Ufimtsev', 'Дмитрий', 'Уфимцев']
+    # # res = mquery('../SQL/add users.sql', params)
+    # # print(res)
+    # # params = [140291166]
+    # # params = [140291166, 'Dmitry_Ufimtsev', 'Дмитрий', 'Уфимцев']
+    # # res = mquery('add_users', params)
+    # # print(res)
+    # # params = [140291166]
+    # # res = mquery('check_users', params)
+    # # print(res)
