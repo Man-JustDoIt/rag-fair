@@ -30,6 +30,7 @@ from aiogram.filters import CommandStart
 from aiogram.enums.parse_mode import ParseMode
 
 from mquery import mquery
+import muser as mu
 
 
 class BC:
@@ -63,6 +64,12 @@ def add2log(tg_id, event, comments):
     return True
 
 
+
+
+
+
+
+
 def check_users(message: types.Message, event):
     tg_login = message.from_user.username
     tg_id = message.from_user.id
@@ -71,9 +78,11 @@ def check_users(message: types.Message, event):
     role = 'user'
     last_time = '2000-01-01'
 
-    res = mquery('check_user_and_role', [tg_id])
-    if isinstance(res, pd.DataFrame) and res.empty:
+    # Проверяем наличие пользователя в БД
+    cuar = mu.check_user_and_rights(tg_id)
+    if cuar is None:
         params = [tg_id, tg_login, first_name, last_name]
+        # Если пользователя нет в БД - добавляем
         cnt = mquery('add_new_user', params)
         if not cnt:
             print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить пользователя {first_name or tg_login} в БД!')
@@ -81,23 +90,30 @@ def check_users(message: types.Message, event):
         else:
             print(f'{BC.OKBLUE}В БД добавлено {cnt} записей.{BC.ENDC}')
         new_user = 1
-    elif isinstance(res, pd.DataFrame):
+    elif isinstance(cuar, list):
         new_user = 0
-        role = res['role'].iloc(0)[0] if res['role'].iloc(0)[0] is not None else role
+        # Если пользователь есть в БД - определяем дату/время последнего входа
         res = mquery('last_event_time', [tg_id, event])
         if isinstance(res, pd.DataFrame) and not res.empty:
             last_time = res['report_dt'].iloc(0)[0] if res['report_dt'].iloc(0)[0] is not None else last_time
     else:
         return False
 
+    # Определяем права пользователя
+    role = check_user_rights(tg_id)
+    if not role:
+        return False
+
     if new_user == 1:
         msg = f'Добро пожаловать {first_name}!'
-        comments = f'{tg_login}: - регистрация нового пользователя.'
+        comments = f'{tg_login}: {role} - регистрация нового пользователя.'
     else:
         msg = f'Привет {first_name}!'
         comments = f'{tg_login}: {role} - вход зарегистрированного пользователя'
         comments += f", предыдущий вход {last_time} " if last_time != '2000-01-01' else '.'
 
+    if role == 'banned_user':
+        msg = f'{first_name}, к сожалению вход для Вас временно ограничен. Обратитесь к администратору ресурса.'
     return msg if add2log(tg_id, event, comments) else False
 
 # обработка команды /start от бота

@@ -6,8 +6,10 @@ import sqlite3
 import pandas as pd
 import yaml
 
-sql_keywords = ["from", "select", "where", "join", "group by", "having", "order by",
+sql_keywords = ["from", "select", "where", "join", "group by", "having", "order by", "pragma",
                 "drop", "insert", "update", "delete", "create", "alter"]
+
+load_dotenv()
 
 class BC:
     HEADER = '\033[95m'
@@ -69,7 +71,7 @@ def get_sql_text(sql_query: str, params=None):
        """
     yml_path = os.getenv('yml_path')
 
-    with open(yml_path, 'r') as file:
+    with open(yml_path, 'r', encoding='utf-8') as file:
         requests = yaml.safe_load(file)
     #     Проверяем, является ли sql_query ключом Yaml
     try:
@@ -125,7 +127,7 @@ def mquery(sql_query: str, params=None):
     2. Соединяемся с БД
     2. Последовательно выполняем полученные sql команды
     """
-    load_dotenv()
+
     db_path = os.getenv('db_path')
 
     sql_list = get_sql_text(sql_query, params)
@@ -138,7 +140,7 @@ def mquery(sql_query: str, params=None):
     # print(BC.WARNING, sql_query, BC.ENDC)
     for sql in sql_list:
         try:
-            if any(keyword in sql.lower() for keyword in sql_keywords[7:]):
+            if any(keyword in sql.lower() for keyword in sql_keywords[8:]):
                 cursor.execute(sql)
                 connection.commit()
                 out = cursor.rowcount
@@ -153,14 +155,14 @@ def mquery(sql_query: str, params=None):
 
 
 if __name__ == "__main__":
-    tg_id, new_role, author_tg_id = 123456, 'banned_user', 140291166
-    params = [tg_id, author_tg_id, new_role, tg_id]
-    res = mquery('set_user_and_rights', params)
-    print(res)
-
-    params = ['команда /start']
-    res = mquery('check_event', params)
-    print(res)
+    # tg_id, new_role, author_tg_id = 123456, 'banned_user', 140291166
+    # params = [tg_id, author_tg_id, new_role, tg_id]
+    # res = mquery('set_user_and_rights', params)
+    # print(res)
+    #
+    # params = ['команда /start']
+    # res = mquery('check_event', params)
+    # print(res)
 
 
 
@@ -204,8 +206,9 @@ if __name__ == "__main__":
     # """
     # # res = mquery('return_user_role', params)
     #
-    # query = "select * from user_accounts_h"
-    # res = mquery(query, params)
+    query = 'delete from user_role_h where tg_id = 123456'
+    res = mquery(query)
+    print(res)
     # print(res['phone'].iloc(0)[0])
     #
     # # print(res['role'].item())

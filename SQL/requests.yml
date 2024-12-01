@@ -1,3 +1,9 @@
+# Деактивируем учетную запись пользователя
+deactivate_user_account:
+    "
+    update user_accounts_h set is_actual = 0 where tg_id = %var%
+    "
+
 # Возвращаем роль и дату/время последнего входа пользователя
 last_event_time:
     "
@@ -10,18 +16,46 @@ last_event_time:
         and ed.event = '%var%'
     "
 
-# Проверка наличия пользователя
-check_user_and_role:
+# Изменяем роль пользователя
+set_user_and_rights:
     "
-	select ua.*, ud.role
+    update user_role_h set is_actual = 0 where tg_id = %var%
+    ;
+    insert into user_role_h
+    	(report_dt, is_actual, tg_id, role_id, author_tg_id)
+    select 
+    		datetime('now', 'localtime') as report_dt
+    	,	1 as is_actual
+    	,	ua.tg_id
+    	,	ur.role_id
+    	,	%var% as author_tg_id
     from user_accounts_h as ua
-	left join user_role_h as ur
-		on ur.tg_id = ua.tg_id
-		and ur.is_actual = 1
-    left join user_role_dict as ud
-        on ud.role_id = ur.role_id  		
+    join user_role_dict as ur on role = '%var%'
     where 1=1
-		and ua.tg_id = %var%    
+    	and tg_id = %var%
+    "
+
+
+# Проверка прав пользователя при его наличия в БД
+check_user_and_rights:
+    "
+    select
+        tg_login
+    ,	coalesce(ud.role, 'user') as role
+    ,	ua.tg_id
+    ,	first_name
+    ,	last_name
+    ,	phone
+    ,	corp_email
+    ,	home_email
+ 	from user_accounts_h as ua 
+	left join user_role_h as ur on 1=1
+		and ur.tg_id = ua.tg_id
+		and ur.is_actual = 1
+	left join user_role_dict as ud on 1=1
+		and ud.role_id = ur.role_id
+	where 1=1
+		and ua.tg_id = %var%
 		and ua.is_actual = 1
     "
 
@@ -38,9 +72,9 @@ add_new_user:
     "            
     insert into
     user_accounts_h
-        (report_dt, is_actual, tg_id, tg_login, first_name, last_name)
+        (report_dt, is_actual, %var%)
     values
-        (datetime('now', 'localtime'), 1, %var%, '%var%', '%var%', '%var%')
+        (datetime('now', 'localtime'), 1, %var%)
     "
 
 # Добавить запись в log
