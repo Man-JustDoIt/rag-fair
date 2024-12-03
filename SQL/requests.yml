@@ -8,12 +8,13 @@ deactivate_user_account:
 last_event_time:
     "
     select 
-        max(report_dt) as report_dt 
+            datetime(coalesce(max(report_dt), '2000-01-01')) as report_dt
+         ,  event_name 
     from events_h as eh
     join events_dict as ed on 1=1
-        and eh.event_id = ed.event_id
+        and eh.event_name_id = ed.event_name_id
         and eh.tg_id = %var%
-        and ed.event = '%var%'
+        and ed.event_name = '%var%'
     "
 
 # Изменяем роль пользователя
@@ -80,16 +81,10 @@ add_new_user:
 # Добавить запись в log
 add2log:
     "    
-    insert into 
-    events_h
-        (report_dt, tg_id, event_id, comments)
-    select 
-        datetime('now', 'localtime'),
-        %var%,
-        event_id,
-        '%var%'
-    from events_dict
-    where event = '%var%'
+    insert into events_h 
+        (event_id, report_dt, %var%)
+    values 
+        (Null, datetime('now', 'localtime'), %var%)
     "
 
 # Проверяем наличие нужных таблиц, если нет, то создаем
@@ -115,19 +110,22 @@ create_tables:
     
     create table if not exists events_dict
     (
-    	    event_id integer primary key
-    	,	event text unique not null
+    	    event_name_id integer primary key
+    	,	event_name text unique not null
     )
     
     ;
     --  drop table if exists events_h;
     
-    create table if not exists events_h
+ create table if not exists events_h
     (
-            report_dt date not null
+	        event_id integer primary key
+        ,	report_dt date not null
     	,   tg_id integer not null
-    	,	event_id text not null
-    	,	comments text null
+		,	tg_login text not null
+		,	role text not null 
+    	,	event_name_id text not null
+		,	comments text null
     )
     ;
 

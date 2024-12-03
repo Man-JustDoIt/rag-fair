@@ -109,32 +109,50 @@ def add_or_update_user(**kwargs):
         return False
 
 
-def add_event2log():
-    #     todo  Функция добавляет в таблицу events_h информацию по следующим событиям:
-    #     todo  0. Регистрация нового пользователя в БД
-    #     todo  1. Вход пользователя с правами - нажатие кнопки 'команда /start'
-    table_name = 'user_events_h'
-#     нужно создать таблицу user_events_h со следующими полями:
-#   id - автоинкримент, уникальный идентификатор
-#   report_dt - дата и время события
-#   last_time_dt - дата и время события предыдущего события по этому пользователю
-#   tg_id - id пользователя
-#   tg_login - login пользователя
-#   role - role пользователя
-#   id_event - id события из словаря event_dict
-#   is_success - 0 или 1, успешно или неуспешно произошло событие
-#   comment - комментарий по событию
+def add_event2log(tg_id, event_name):
+    #     Функция формирует лог по активностям пользователя
+    #     В таблицу events_h заносится информация по следующим событиям:
+    #           1. Вход нажатие кнопки '/start' пользователя с правами XXX
 
+    res = mquery(f"select event_name_id from events_dict where event_name = '{event_name}'")
+    if isinstance(res, pd.DataFrame) and not res.empty:
+        event_name_id = res['event_name_id'].iloc(0)[0]
+    else:
+        print(f'{BC.FAIL}Error:{BC.ENDC} Событие {BC.WARNING}{event_name}{BC.ENDC} не зарегистрировано!')
+        return False
 
+    res = check_user_and_rights(tg_id)
+    if isinstance(res, dict) and len(res) > 0:  # Существующий пользователь
+        event_dict = res
+    else:
+        return False
+    event_dict['tg_id'], event_dict['event_name_id'] = tg_id, event_name_id
+
+    params = list(event_dict.keys())
+    values = list(event_dict.values())
+
+    params_str = ', '.join(params)
+    values_srt = str(values)[1:-1]
+    params = [params_str, values_srt]
+    res = mquery('add2log', params)
+    if not (isinstance(res, numbers.Number) and res == 1):
+        return False
+
+    res = mquery('last_event_time', [tg_id, event_name])
+    if isinstance(res, pd.DataFrame) and not res.empty:
+        return res.to_dict(orient='records')[0]
+    else:
+        return False
 
 
 if __name__ == "__main__":
     test_user = {'tg_id': 123456, 'tg_login': 'test_tg_login', 'first_name': 'test_first_name',
                  'last_name': 'test_last_name', 'phone': '+7 913 913 88 99',
                  'corp_email': 'test_user@sber.ru', 'home_email': 'test_user@gmail.com'}
-    mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
-    mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
+    # mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
+    # mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
+    add_event2log(test_user['tg_id'], '/start')
 
-    add_or_update_user(**test_user)
-    res = set_user_rights(test_user['tg_id'], 'moderator', 140291166)
-    print(res)
+    # add_or_update_user(**test_user)
+    # res = set_user_rights(test_user['tg_id'], 'moderator', 140291166)
+    # print(res)

@@ -21,9 +21,9 @@ class CheckUser(unittest.TestCase):
     #           2.3. Назначение администраторам роли пользователя: 'user'
     #           2.4. Изменение прав пользователя с 'user' на 'moderator'
     #           2.5. Недостаточно прав для изменения роли
-    # todo  3. Дате/время последнего входа
-    # todo      3.1. В БД нет данных о входе
-    # todo      2.2. В БД еть данные о входе
+    # todo  3. Запись лога по действиям пользователя
+    # todo      3.1. Пользователь зашел в БД
+
 
     # 0. Пользователя нет в БД
     def test_user_not_in_bd(self):
@@ -191,6 +191,24 @@ class CheckUser(unittest.TestCase):
         # Результат
         self.assertEqual(res['role'], 'user')
 
+    def test_add2log_01(self):
+        # Подготовка
+        test_user = {'tg_id': 123456, 'tg_login': 'test_tg_login', 'first_name': 'test_first_name',
+                     'last_name': 'test_last_name', 'phone': '+7 913 913 88 99',
+                     'corp_email': 'test_user@sber.ru', 'home_email': 'test_user@gmail.com'}
+        mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
+        mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
+        mquery(f"delete from events_h where tg_id = {test_user['tg_id']}")
+        # Исполнение
+        mu.add_or_update_user(**test_user)
+        res = mu.add_event2log(test_user['tg_id'], '/start')
+
+        # Зачистка
+        mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
+        mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
+        mquery(f"delete from events_h where tg_id = {test_user['tg_id']}")
+        # Результат
+        self.assertEqual(res['event_name'], '/start')
 
 
 
