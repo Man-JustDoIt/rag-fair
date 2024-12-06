@@ -71,6 +71,7 @@ def add2log(tg_id, event, comments):
 
 
 def check_users(message: types.Message, event):
+
     tg_login = message.from_user.username
     tg_id = message.from_user.id
     first_name = message.from_user.first_name
@@ -79,6 +80,8 @@ def check_users(message: types.Message, event):
     last_time = '2000-01-01'
 
     # Проверяем наличие пользователя в БД
+    add_or_update_user(update=False, **kwargs)
+
     cuar = mu.check_user_and_rights(tg_id)
     if cuar is None:
         params = [tg_id, tg_login, first_name, last_name]

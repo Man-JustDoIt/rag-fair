@@ -55,60 +55,6 @@ def set_user_rights(tg_id, new_role, author_tg_id):
         return False
 
 
-def add_or_update_user(**kwargs):
-    #     Функция добавляет или обновляет данные о пользователе в БД в таблице user_accounts_h
-    #     0. Проверяем ключи **kwargs на количество и соответствие колонкам в таблице user_accounts_h
-    #     1. Проверяем наличие пользователя в БД
-    #     2. Если пользователь есть и параметры идентичны - возвращаем 0
-    #     3. Если пользователь есть и параметры различны - деактивируем текущую запись и deactivate = 1
-    #     4. Если пользователя в БД нет или deactivate = 1 - создаем запрос на добавление записи в БД
-
-    table_name = 'user_accounts_h'
-    min_params = ['tg_id', 'tg_login']
-    sql_query = f'pragma table_info({table_name})'
-    res = mquery(sql_query)
-    deactivate = 0
-
-    if isinstance(res, pd.DataFrame) and not res.empty:
-        table_columns = res['name'].to_list()
-        params = list(kwargs.keys())
-        values = list(kwargs.values())
-    else:
-        print(f'{BC.FAIL}Error:{BC.ENDC} Не удается прочитать структуру таблицы {table_name} в БД!')
-        return False
-
-    if not set(params).issubset(table_columns):
-        delta = set(params) - set(table_columns)
-        print(f'{BC.FAIL}Error:{BC.ENDC} Столбцы {BC.WARNING}{delta}{BC.ENDC} отсутствуют в таблице {table_name}!')
-        return False
-
-    if not set(min_params).issubset(params):
-        delta = set(min_params) - set(params)
-        print(f'{BC.FAIL}Error:{BC.ENDC} Не хватает параметра {BC.WARNING}{delta}{BC.ENDC}!')
-        return False
-
-    res = check_user_and_rights(kwargs['tg_id'], all=True)
-    if isinstance(res, dict) and len(res) > 0:  # Существующий пользователь
-        res_dict = {k: res[k] for k in table_columns if k in res}
-        if res_dict == kwargs:
-            return 0
-        else:
-            res = mquery('deactivate_user_account', [kwargs['tg_id']])
-            deactivate = 1
-
-    if res is None or deactivate == 1:  # Завести новую запись по пользователю
-        params_str = ', '.join(params)
-        values_srt = str(values)[1:-1]
-        params = [params_str, values_srt]
-        res = mquery('add_new_user', params)
-        if isinstance(res, numbers.Number) and res == 1:
-            return res + deactivate
-        else:
-            return False
-    else:
-        return False
-
-
 def add_event2log(tg_id, event_name):
     #     Функция формирует лог по активностям пользователя
     #     В таблицу events_h заносится информация по следующим событиям:
@@ -145,14 +91,93 @@ def add_event2log(tg_id, event_name):
         return False
 
 
+def add_or_update_user(**kwargs):
+    #     Функция добавляет или обновляет данные о пользователе в БД в таблице user_accounts_h
+    #     0. Проверяем ключи **kwargs на количество и соответствие колонкам в таблице user_accounts_h
+    #     1. Проверяем наличие пользователя в БД
+    #     2. Если пользователь есть и параметры идентичны - возвращаем 0
+    #     3. Если пользователь есть и параметры различны - деактивируем текущую запись и deactivate = 1
+    #   todo       3.1 Нужно изменить только те параметры, которые содержит *kwarg, остальные оставить старые
+    #     4. Если пользователя в БД нет или deactivate = 1 - создаем запрос на добавление записи в БД
+
+    table_name = 'user_accounts_h'
+    min_params = ['tg_id', 'tg_login']
+    sql_query = f'pragma table_info({table_name})'
+    table_columns_df = mquery(sql_query)
+    deactivate = 0
+
+    if isinstance(table_columns_df, pd.DataFrame) and not table_columns_df.empty:
+        table_columns = table_columns_df['name'].to_list()
+        user_new_params_dict = kwargs
+        user_new_params_keys = list(user_new_params_dict.keys())
+        user_new_params_values = list(user_new_params_dict.values())
+    else:
+        print(f'{BC.FAIL}Error:{BC.ENDC} Не удается прочитать структуру таблицы {table_name} в БД!')
+        return False
+
+    if not set(user_new_params_keys).issubset(table_columns):
+        delta = set(user_new_params_keys) - set(table_columns)
+        print(f'{BC.FAIL}Error:{BC.ENDC} Столбцы {BC.WARNING}{delta}{BC.ENDC} отсутствуют в таблице {table_name}!')
+        return False
+
+    if not set(min_params).issubset(user_new_params_keys):
+        delta = set(min_params) - set(user_new_params_keys)
+        print(f'{BC.FAIL}Error:{BC.ENDC} Не хватает параметра {BC.WARNING}{delta}{BC.ENDC}!')
+        return False
+
+    user_current_params = check_user_and_rights(kwargs['tg_id'], all=True)
+    print(user_current_params)
+
+    if isinstance(user_current_params, dict) and len(user_current_params) > 0:  # Существующий пользователь
+        # убираем поля, которых нет в таблице
+        user_current_params_dict = {k: user_current_params[k] for k in table_columns if k in user_current_params}
+        # выделяем ключи, которые есть как в существующих, так и в новых параметрах пользователя.
+        user_current_params_keys_cut = user_current_params_dict.keys() & user_new_params_dict.keys()
+        # в существующих параметрах оставляем только одинаковые поля
+        user_current_params_dict_cut = {k: user_current_params_dict[k] for k in user_current_params_keys_cut}
+        # если поля совпали, то ничего обновлять не нужно
+        if user_current_params_dict_cut == user_new_params_dict:
+            return 0
+        # если не совпали, то ищем расхождения в значениях (ключи мы привели к единому виду выше)
+        delta_dict = dict(set(user_new_params_dict.items()) - set(user_current_params_dict_cut.items()))
+        # заменяем данные в текущем словаре на новые, если они новые
+        user_current_params_dict.update(delta_dict)
+        # для записи параметров в SQL выделим название столбцов и их значения
+        user_params = ', '.join(list(user_current_params_dict.keys()))
+        user_values = str(list(user_current_params_dict.values()))[1:-1]
+        deactivate = 1
+
+    elif user_current_params is None:  # Новый пользователь
+        user_params = ', '.join(user_new_params_keys)
+        user_values = str(user_new_params_values)[1:-1]
+    else:
+        return False
+
+    if deactivate == 1:
+        # деактивируем текущую запись
+        mquery('deactivate_user_line', [kwargs['tg_id']])
+
+    params = [user_params, user_values]
+    res = mquery('add_user_line', params)
+    if isinstance(res, numbers.Number) and res == 1:
+        return res + deactivate
+    else:
+        return False
+
+
 if __name__ == "__main__":
     test_user = {'tg_id': 123456, 'tg_login': 'test_tg_login', 'first_name': 'test_first_name',
                  'last_name': 'test_last_name', 'phone': '+7 913 913 88 99',
                  'corp_email': 'test_user@sber.ru', 'home_email': 'test_user@gmail.com'}
     # mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
     # mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
-    add_event2log(test_user['tg_id'], '/start')
+    # add_event2log(test_user['tg_id'], '/start')
+    null = 'null'
+    print(add_or_update_user(**test_user))
+    test_user = {'tg_id': 123456, 'tg_login': 'test_tg_login', 'first_name': 'new_first_name',
+                 'last_name': 'test_last_name', 'phone': None}
+    print(add_or_update_user(**test_user))
 
-    # add_or_update_user(**test_user)
+
     # res = set_user_rights(test_user['tg_id'], 'moderator', 140291166)
     # print(res)

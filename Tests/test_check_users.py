@@ -21,8 +21,8 @@ class CheckUser(unittest.TestCase):
     #           2.3. Назначение администраторам роли пользователя: 'user'
     #           2.4. Изменение прав пользователя с 'user' на 'moderator'
     #           2.5. Недостаточно прав для изменения роли
-    # todo  3. Запись лога по действиям пользователя
-    # todo      3.1. Пользователь зашел в БД
+    #       3. Запись лога по действиям пользователя
+    #           3.1. Пользователь зашел в БД
 
 
     # 0. Пользователя нет в БД
@@ -45,7 +45,7 @@ class CheckUser(unittest.TestCase):
                      'corp_email': 'test_user@sber.ru', 'home_email': 'test_user@gmail.com'}
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         res = mu.check_user_and_rights(test_user['tg_id'])
         # Зачистка
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
@@ -60,8 +60,8 @@ class CheckUser(unittest.TestCase):
                      'corp_email': 'test_user@sber.ru', 'home_email': 'test_user@gmail.com'}
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
-        res = mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
+        res = mu.add_or_update_user(True, **test_user)
         # Зачистка
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         # Результат
@@ -75,10 +75,10 @@ class CheckUser(unittest.TestCase):
                      'corp_email': 'test_user@sber.ru', 'home_email': 'test_user@gmail.com'}
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         test_user['last_name'] = 'test_last_names'
         del test_user['home_email']
-        res = mu.add_or_update_user(**test_user)
+        res = mu.add_or_update_user(True, **test_user)
         # Зачистка
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         # Результат
@@ -92,11 +92,11 @@ class CheckUser(unittest.TestCase):
                      'corp_email': 'test_user@sber.ru', 'home_email': 'test_user@gmail.com'}
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         test_user['last_name'] = 'test_last_names'
         del test_user['tg_login']
         # Зачистка
-        res = mu.add_or_update_user(**test_user)
+        res = mu.add_or_update_user(True, **test_user)
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         # Результат
         self.assertEqual(res, False)
@@ -109,7 +109,7 @@ class CheckUser(unittest.TestCase):
                      'corp_email': 'test_user@sber.ru', 'home_email': 'test_user@gmail.com'}
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         res = mu.check_user_and_rights(test_user['tg_id'])
         # Зачистка
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
@@ -125,7 +125,7 @@ class CheckUser(unittest.TestCase):
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         mu.set_user_rights(test_user['tg_id'], 'moderator', 140291166)
         res = mu.check_user_and_rights(test_user['tg_id'])
         # Зачистка
@@ -143,7 +143,7 @@ class CheckUser(unittest.TestCase):
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         mu.set_user_rights(test_user['tg_id'], 'user', 140291166)
         res = mu.check_user_and_rights(test_user['tg_id'])
         # Зачистка
@@ -161,7 +161,7 @@ class CheckUser(unittest.TestCase):
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         mu.set_user_rights(test_user['tg_id'], 'moderator', 140291166)
         mu.set_user_rights(test_user['tg_id'], 'user', 140291166)
 
@@ -181,7 +181,7 @@ class CheckUser(unittest.TestCase):
         mquery(f"delete from user_accounts_h where tg_id = {test_user['tg_id']}")
         mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         mu.set_user_rights(test_user['tg_id'], 'moderator', test_user['tg_id'])
         res = mu.check_user_and_rights(test_user['tg_id'])
 
@@ -200,7 +200,7 @@ class CheckUser(unittest.TestCase):
         mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
         mquery(f"delete from events_h where tg_id = {test_user['tg_id']}")
         # Исполнение
-        mu.add_or_update_user(**test_user)
+        mu.add_or_update_user(False, **test_user)
         res = mu.add_event2log(test_user['tg_id'], '/start')
 
         # Зачистка

@@ -56,6 +56,15 @@ def replace_semicolon(text, direction):
         return text
 
 
+def replace_none(text):
+    words = text.split(',')
+    for i, word in enumerate(words):
+        if word.strip() == 'None':
+            words[i] = words[i].replace('None', 'Null')
+    text = ','.join(words)
+    return text
+
+
 def get_sql_text(sql_query: str, params=None):
     """
            В качестве входного sql_query могут быть переданы 3 типа параметров:
@@ -111,7 +120,8 @@ def get_sql_text(sql_query: str, params=None):
 
     # Временно заменяем те ';' которые не являются разделителми блоков SQL
     sql_flat = replace_semicolon(sql_query, 1)
-
+    # Py понимает None, но SQL понимает Null, нужно заменить
+    sql_flat = replace_none(sql_flat)
     # Разбиваем SQL на исполняемые блоки
     sql_list = sql_flat.split(';')
     sql_list = sql_list[:-1] if sql_list[-1].strip() == '' else sql_list
