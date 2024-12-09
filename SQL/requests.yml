@@ -8,7 +8,9 @@ deactivate_user_line:
 last_event_time:
     "
     select 
-            datetime(coalesce(max(report_dt), '2000-01-01')) as report_dt
+            event_id 
+         ,  datetime(coalesce(max(report_dt), '2000-01-01')) as report_dt
+         ,  tg_id   
          ,  event_name 
     from events_h as eh
     join events_dict as ed on 1=1

@@ -21,6 +21,7 @@ import json
 import os
 import sys
 from dotenv import load_dotenv
+from datetime import datetime
 import pandas as pd
 
 
@@ -52,79 +53,39 @@ bot = Bot(os.getenv('bot_token'))
 url = "https://man-justdoit.github.io/rag-fair/index.html"
 dp = Dispatcher()
 
-def add2log(tg_id, event, comments):
 
-    check_ev = mquery('check_event', [event])
-    if isinstance(check_ev, pd.DataFrame) and check_ev.empty:
-        print(f'{BC.FAIL}Error:{BC.ENDC} В словаре событий отсутствует событие {BC.WARNING}{event}{BC.ENDC}!')
-        return False
-    if not mquery('add2log', [tg_id, comments, event]):
-        print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить данные в лог {BC.WARNING}{event}{BC.ENDC} БД!')
-        return False
-    return True
-
-
-
-
-
-
-
-
-def check_users(message: types.Message, event):
-
-    tg_login = message.from_user.username
-    tg_id = message.from_user.id
-    first_name = message.from_user.first_name
-    last_name = message.from_user.last_name
-    role = 'user'
-    last_time = '2000-01-01'
+def check_users_and_log(message: types.Message, event_name):
+    user = {'tg_login': message.from_user.username, 'tg_id': message.from_user.id,
+            'first_name': message.from_user.first_name, 'last_name': message.from_user.last_name}
 
     # Проверяем наличие пользователя в БД
-    add_or_update_user(update=False, **kwargs)
-
-    cuar = mu.check_user_and_rights(tg_id)
-    if cuar is None:
-        params = [tg_id, tg_login, first_name, last_name]
-        # Если пользователя нет в БД - добавляем
-        cnt = mquery('add_new_user', params)
-        if not cnt:
-            print(f'{BC.FAIL}Error:{BC.ENDC} Не удалось добавить пользователя {first_name or tg_login} в БД!')
-            return False
-        else:
-            print(f'{BC.OKBLUE}В БД добавлено {cnt} записей.{BC.ENDC}')
-        new_user = 1
-    elif isinstance(cuar, list):
-        new_user = 0
-        # Если пользователь есть в БД - определяем дату/время последнего входа
-        res = mquery('last_event_time', [tg_id, event])
-        if isinstance(res, pd.DataFrame) and not res.empty:
-            last_time = res['report_dt'].iloc(0)[0] if res['report_dt'].iloc(0)[0] is not None else last_time
-    else:
+    user_dict = mu.add_or_update_user(**user)
+    if not user_dict:
+        return False
+    # Записываем в БД в событие
+    event_dict = mu.add_event2log(tg_id=user['tg_id'], event_name=event_name)
+    if not event_dict:
         return False
 
-    # Определяем права пользователя
-    role = check_user_rights(tg_id)
-    if not role:
-        return False
+    return_dict = {key: val for key, val in event_dict.items() if key in ('report_dt', 'last_event_dt', 'event_name')}
+    return_dict.update(user_dict)
+    return return_dict
 
-    if new_user == 1:
-        msg = f'Добро пожаловать {first_name}!'
-        comments = f'{tg_login}: {role} - регистрация нового пользователя.'
-    else:
-        msg = f'Привет {first_name}!'
-        comments = f'{tg_login}: {role} - вход зарегистрированного пользователя'
-        comments += f", предыдущий вход {last_time} " if last_time != '2000-01-01' else '.'
-
-    if role == 'banned_user':
-        msg = f'{first_name}, к сожалению вход для Вас временно ограничен. Обратитесь к администратору ресурса.'
-    return msg if add2log(tg_id, event, comments) else False
 
 # обработка команды /start от бота
 @dp.message(CommandStart())
 async def start(message: types.Message):
-    msg = check_users(message, 'команда /start')
-    text = 'Что-то пошло не так!' if not msg else msg
-    await message.answer(text=text, reply_markup=create_btn())
+    event_dict = check_users_and_log(message, '/start')
+    if not event_dict:
+        msg = 'Что-то пошло не так!'
+    elif event_dict['last_event_dt'] == '2000-01-01 00:00:00':
+        msg = 'Добро пожаловать, '
+    else:
+        msg = 'Привет, '
+    msg += event_dict['first_name'] or event_dict['tg_login']
+    msg += '!'
+
+    await message.answer(text=msg, reply_markup=create_btn())
 
 
 # обработка команды /help от бота
@@ -167,7 +128,7 @@ async def main():
 
 if __name__ == "__main__":
 
-    if not mquery('create_tables'):
-        print(f'{BC.FAIL}Error: не удалось проверить целостность таблиц БД!{BC.ENDC}')
-    else:
-        asyncio.run(main())
+    # if not mquery('create_tables'):
+    #     print(f'{BC.FAIL}Error: не удалось проверить целостность таблиц БД!{BC.ENDC}')
+    # else:
+    asyncio.run(main())

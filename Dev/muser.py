@@ -1,9 +1,9 @@
 # todo В этом модуле соберем все операции с пользователями:
-#       1. Наличие пользователя в БД и его права, если он есть в БД - по умолчанию user  --  done
-#       2. Добавить пользователя в БД, если его нет в БД
+#       1. Добавить пользователя в БД, если его нет в БД
+#       2. Наличие пользователя в БД и его права - по умолчанию user
 #       3. Изменить данные пользователя
 #       4. Изменить права пользователя
-# todo  5. Занести событие в log
+#       5. Занести событие в log
 
 import pandas as pd
 import numbers
@@ -55,7 +55,8 @@ def set_user_rights(tg_id, new_role, author_tg_id):
         return False
 
 
-def add_event2log(tg_id, event_name):
+def add_event2log(tg_id, event_name) -> [dict, False]:
+    #     return dict {report_dt,  tg_id,  event_name} or False
     #     Функция формирует лог по активностям пользователя
     #     В таблицу events_h заносится информация по следующим событиям:
     #           1. Вход нажатие кнопки '/start' пользователя с правами XXX
@@ -77,6 +78,12 @@ def add_event2log(tg_id, event_name):
     params = list(event_dict.keys())
     values = list(event_dict.values())
 
+    res = mquery('last_event_time', [tg_id, event_name])
+    if isinstance(res, pd.DataFrame) and not res.empty:
+        last_event = res.to_dict(orient='records')[0]
+    else:
+        return False
+
     params_str = ', '.join(params)
     values_srt = str(values)[1:-1]
     params = [params_str, values_srt]
@@ -86,18 +93,21 @@ def add_event2log(tg_id, event_name):
 
     res = mquery('last_event_time', [tg_id, event_name])
     if isinstance(res, pd.DataFrame) and not res.empty:
-        return res.to_dict(orient='records')[0]
+        log_line = res.to_dict(orient='records')[0]
     else:
         return False
 
+    log_line['last_event_dt'] = last_event['report_dt']
+    return log_line
 
-def add_or_update_user(**kwargs):
+
+def add_or_update_user(**kwargs) -> [dict, False]:
     #     Функция добавляет или обновляет данные о пользователе в БД в таблице user_accounts_h
     #     0. Проверяем ключи **kwargs на количество и соответствие колонкам в таблице user_accounts_h
     #     1. Проверяем наличие пользователя в БД
     #     2. Если пользователь есть и параметры идентичны - возвращаем 0
     #     3. Если пользователь есть и параметры различны - деактивируем текущую запись и deactivate = 1
-    #   todo       3.1 Нужно изменить только те параметры, которые содержит *kwarg, остальные оставить старые
+    #          3.1 Нужно изменить только те параметры, которые содержит *kwarg, остальные оставить старые
     #     4. Если пользователя в БД нет или deactivate = 1 - создаем запрос на добавление записи в БД
 
     table_name = 'user_accounts_h'
@@ -126,7 +136,6 @@ def add_or_update_user(**kwargs):
         return False
 
     user_current_params = check_user_and_rights(kwargs['tg_id'], all=True)
-    print(user_current_params)
 
     if isinstance(user_current_params, dict) and len(user_current_params) > 0:  # Существующий пользователь
         # убираем поля, которых нет в таблице
@@ -135,12 +144,12 @@ def add_or_update_user(**kwargs):
         user_current_params_keys_cut = user_current_params_dict.keys() & user_new_params_dict.keys()
         # в существующих параметрах оставляем только одинаковые поля
         user_current_params_dict_cut = {k: user_current_params_dict[k] for k in user_current_params_keys_cut}
-        # если поля совпали, то ничего обновлять не нужно
+        # если словари совпали, то ничего обновлять не нужно, возвращаем dict с данными пользователя
         if user_current_params_dict_cut == user_new_params_dict:
-            return 0
+            return check_user_and_rights(kwargs['tg_id'], all=True)
         # если не совпали, то ищем расхождения в значениях (ключи мы привели к единому виду выше)
         delta_dict = dict(set(user_new_params_dict.items()) - set(user_current_params_dict_cut.items()))
-        # заменяем данные в текущем словаре на новые, если они новые
+        # заменяем данные в текущем словаре на новые, если есть различия
         user_current_params_dict.update(delta_dict)
         # для записи параметров в SQL выделим название столбцов и их значения
         user_params = ', '.join(list(user_current_params_dict.keys()))
@@ -160,7 +169,7 @@ def add_or_update_user(**kwargs):
     params = [user_params, user_values]
     res = mquery('add_user_line', params)
     if isinstance(res, numbers.Number) and res == 1:
-        return res + deactivate
+        return check_user_and_rights(kwargs['tg_id'], True)
     else:
         return False
 
@@ -173,10 +182,10 @@ if __name__ == "__main__":
     # mquery(f"delete from user_role_h where tg_id = {test_user['tg_id']}")
     # add_event2log(test_user['tg_id'], '/start')
     null = 'null'
-    print(add_or_update_user(**test_user))
+    print('Out: ', add_or_update_user(**test_user))
     test_user = {'tg_id': 123456, 'tg_login': 'test_tg_login', 'first_name': 'new_first_name',
                  'last_name': 'test_last_name', 'phone': None}
-    print(add_or_update_user(**test_user))
+    print('Out: ', add_or_update_user(**test_user))
 
 
     # res = set_user_rights(test_user['tg_id'], 'moderator', 140291166)
