@@ -100,6 +100,7 @@ create_tables:
         ,   is_actual integer not null
         ,   tg_id integer not null
         ,   tg_login text not null
+        ,   city text null
         ,   first_name text null
         ,   last_name text null
         ,   phone text null
